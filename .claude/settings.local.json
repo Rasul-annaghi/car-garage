@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python3 *)",
-      "PowerShell(python \"C:/Users/user/.claude/skills/ui-ux-pro-max/scripts/search.py\" \"premium automotive car garage manager dark dashboard magazine\" --design-system -p \"Car Garage Manager\" -f markdown 2>&1)"
-    ]
-  }
-}
