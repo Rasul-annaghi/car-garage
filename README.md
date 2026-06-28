@@ -23,10 +23,12 @@ Built for enthusiasts who take their garage seriously.
 
 ## Current Version
 `v0.1` — Frontend shell complete
+`v0.2` — Authentication complete
+
 
 ## Roadmap
 Level 1 ✅ Frontend
-Level 2 🔓 Authentication
+Level 2 ✅ Authentication
 Level 3 🔒 Database & CRUD
 Level 4 🔒 Image Upload
 Level 5 🔒 Search & Filters
