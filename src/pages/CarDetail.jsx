@@ -1,5 +1,6 @@
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
 
 const pageTransition = {
   hidden: { opacity: 0 },
@@ -74,7 +75,13 @@ const specs = (car) => [
 export default function CarDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const car = cars.find((c) => c.id === Number(id)) || cars[0]
+
+  async function handleLogout() {
+    navigate('/')
+    await logout()
+  }
 
   return (
     <motion.div
@@ -98,8 +105,17 @@ export default function CarDetail() {
               Add Car
             </Link>
           </div>
-          <div className="w-9 h-9 rounded-full bg-[#E63946] flex items-center justify-center cursor-pointer">
-            <span className="text-white font-bold text-sm">R</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-[#888] hidden md:block truncate max-w-[180px]">{user?.email}</span>
+            <div className="w-9 h-9 rounded-full bg-[#E63946] flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">{user?.email?.[0]?.toUpperCase() ?? 'U'}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="text-sm font-medium text-[#888] hover:text-white transition-colors duration-200 cursor-pointer"
+            >
+              Log out
+            </button>
           </div>
         </div>
       </nav>

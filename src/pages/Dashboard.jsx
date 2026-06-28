@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
 
 const pageTransition = {
   hidden: { opacity: 0 },
@@ -130,6 +131,14 @@ function CarCard({ car, index }) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
+
+  async function handleLogout() {
+    navigate('/')
+    await logout()
+  }
+
   return (
     <motion.div
       variants={pageTransition}
@@ -152,9 +161,17 @@ export default function Dashboard() {
               Add Car
             </Link>
           </div>
-          {/* Avatar */}
-          <div className="w-9 h-9 rounded-full bg-[#E63946] flex items-center justify-center cursor-pointer">
-            <span className="text-white font-bold text-sm">R</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-[#888] hidden md:block truncate max-w-[180px]">{user?.email}</span>
+            <div className="w-9 h-9 rounded-full bg-[#E63946] flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">{user?.email?.[0]?.toUpperCase() ?? 'U'}</span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="text-sm font-medium text-[#888] hover:text-white transition-colors duration-200 cursor-pointer"
+            >
+              Log out
+            </button>
           </div>
         </div>
       </nav>
@@ -168,7 +185,7 @@ export default function Dashboard() {
           className="mb-10"
         >
           <h1 className="text-4xl md:text-5xl font-black text-white mb-2">
-            Good morning, Rasul 👋
+            Good morning, {user?.email?.split('@')[0]} 👋
           </h1>
           <p className="text-[#888] text-lg">Here's what's in your garage today.</p>
         </motion.div>

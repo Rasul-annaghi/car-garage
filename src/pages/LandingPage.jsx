@@ -74,11 +74,11 @@ export default function LandingPage() {
             <a href="#features" className="text-sm font-medium text-[#555] hover:text-[#111] transition-colors duration-200 cursor-pointer">
               Features
             </a>
-            <Link to="/dashboard" className="text-sm font-medium text-[#555] hover:text-[#111] transition-colors duration-200">
+            <Link to="/login" className="text-sm font-medium text-[#555] hover:text-[#111] transition-colors duration-200">
               Sign In
             </Link>
             <Link
-              to="/dashboard"
+              to="/signup"
               className="bg-[#E63946] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#c8303c] transition-colors duration-200 cursor-pointer"
             >
               Start your garage
@@ -138,7 +138,7 @@ export default function LandingPage() {
               className="flex flex-wrap gap-4"
             >
               <Link
-                to="/dashboard"
+                to="/signup"
                 className="bg-[#E63946] text-white font-bold px-9 py-4 rounded-full text-base hover:bg-[#c8303c] transition-colors duration-200 cursor-pointer"
               >
                 Get started free
