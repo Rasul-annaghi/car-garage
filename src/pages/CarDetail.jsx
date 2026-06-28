@@ -40,8 +40,8 @@ export default function CarDetail() {
   }, [id])
 
   async function handleLogout() {
-    navigate('/')
     await logout()
+    navigate('/')
   }
 
   async function handleDelete() {

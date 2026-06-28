@@ -102,8 +102,8 @@ export default function Dashboard() {
   const activeCars = cars.filter((c) => c.status === 'Active').length
 
   async function handleLogout() {
-    navigate('/')
     await logout()
+    navigate('/')
   }
 
   return (

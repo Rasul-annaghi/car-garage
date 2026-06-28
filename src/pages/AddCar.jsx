@@ -51,8 +51,8 @@ export default function AddCar() {
   const [error, setError] = useState(null)
 
   async function handleLogout() {
-    navigate('/')
     await logout()
+    navigate('/')
   }
 
   function handleChange(e) {

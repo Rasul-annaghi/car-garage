@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useAuth } from '../context/AuthContext'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -56,6 +57,13 @@ const features = [
 ]
 
 export default function LandingPage() {
+  const { user, logout } = useAuth()
+
+  async function handleLogout() {
+    await logout()
+    // Already on /, auth state change will re-render this page automatically
+  }
+
   return (
     <motion.div
       variants={pageTransition}
@@ -74,20 +82,34 @@ export default function LandingPage() {
             <a href="#features" className="text-sm font-medium text-[#555] hover:text-[#111] transition-colors duration-200 cursor-pointer">
               Features
             </a>
-            <Link to="/login" className="text-sm font-medium text-[#555] hover:text-[#111] transition-colors duration-200">
-              Sign In
-            </Link>
-            <Link
-              to="/signup"
-              className="bg-[#E63946] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#c8303c] transition-colors duration-200 cursor-pointer"
-            >
-              Start your garage
-            </Link>
+            {user ? (
+              <>
+                <span className="text-sm font-medium text-[#555] hidden md:block truncate max-w-[200px]">
+                  {user.email}
+                </span>
+                <div className="w-9 h-9 rounded-full bg-[#E63946] flex items-center justify-center flex-shrink-0">
+                  <span className="text-white font-bold text-sm">{user.email?.[0]?.toUpperCase() ?? 'U'}</span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="text-sm font-medium text-[#555] hover:text-[#111] transition-colors duration-200 cursor-pointer"
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/signup"
+                className="bg-[#E63946] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-[#c8303c] transition-colors duration-200 cursor-pointer"
+              >
+                Start your garage
+              </Link>
+            )}
           </div>
         </div>
       </nav>
 
-      {/* Hero — full-viewport split layout */}
+      {/* Hero */}
       <section className="h-screen pt-16 flex items-center px-6 lg:px-16 xl:px-24">
         <div className="w-full max-w-[1400px] mx-auto flex flex-col lg:flex-row items-center lg:items-center lg:justify-between gap-12 lg:gap-16">
 
@@ -137,12 +159,21 @@ export default function LandingPage() {
               custom={3}
               className="flex flex-wrap gap-4"
             >
-              <Link
-                to="/signup"
-                className="bg-[#E63946] text-white font-bold px-9 py-4 rounded-full text-base hover:bg-[#c8303c] transition-colors duration-200 cursor-pointer"
-              >
-                Get started free
-              </Link>
+              {user ? (
+                <Link
+                  to="/dashboard"
+                  className="bg-[#E63946] text-white font-bold px-9 py-4 rounded-full text-base hover:bg-[#c8303c] transition-colors duration-200 cursor-pointer"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <Link
+                  to="/signup"
+                  className="bg-[#E63946] text-white font-bold px-9 py-4 rounded-full text-base hover:bg-[#c8303c] transition-colors duration-200 cursor-pointer"
+                >
+                  Get started free
+                </Link>
+              )}
               <a
                 href="#features"
                 className="border-2 border-[#111] text-[#111] font-bold px-9 py-4 rounded-full text-base hover:bg-[#111] hover:text-white transition-colors duration-200 cursor-pointer"
