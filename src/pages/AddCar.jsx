@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 const pageTransition = {
   hidden: { opacity: 0 },
@@ -29,27 +30,78 @@ const fields = [
 
 export default function AddCar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, logout } = useAuth()
+
+  const editCar = location.state?.car ?? null
+  const isEditing = !!editCar
+
+  const [form, setForm] = useState({
+    make: editCar?.make ?? '',
+    model: editCar?.model ?? '',
+    year: editCar?.year?.toString() ?? '',
+    color: editCar?.color ?? '',
+    horsepower: editCar?.horsepower?.toString() ?? '',
+    engine: editCar?.engine ?? '',
+    notes: editCar?.notes ?? '',
+    status: editCar?.status ?? 'Active',
+  })
+  const [dragOver, setDragOver] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState(null)
 
   async function handleLogout() {
     navigate('/')
     await logout()
   }
-  const [form, setForm] = useState({
-    make: '', model: '', year: '', color: '', horsepower: '', engine: '', notes: '',
-  })
-  const [dragOver, setDragOver] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
 
   function handleChange(e) {
     setForm((f) => ({ ...f, [e.target.id]: e.target.value }))
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault()
+    setError(null)
     setSubmitted(true)
-    setTimeout(() => navigate('/dashboard'), 1200)
+
+    const payload = {
+      make: form.make,
+      model: form.model,
+      year: parseInt(form.year) || null,
+      color: form.color,
+      horsepower: parseInt(form.horsepower) || null,
+      engine: form.engine,
+      notes: form.notes,
+      status: form.status,
+    }
+
+    if (isEditing) {
+      const { error: err } = await supabase
+        .from('cars')
+        .update(payload)
+        .eq('id', editCar.id)
+
+      if (err) {
+        setError(err.message)
+        setSubmitted(false)
+        return
+      }
+      navigate(`/car/${editCar.id}`)
+    } else {
+      const { error: err } = await supabase
+        .from('cars')
+        .insert({ ...payload, user_id: user.id })
+
+      if (err) {
+        setError(err.message)
+        setSubmitted(false)
+        return
+      }
+      navigate('/dashboard')
+    }
   }
+
+  const backTo = isEditing ? `/car/${editCar.id}` : '/dashboard'
 
   return (
     <motion.div
@@ -97,14 +149,14 @@ export default function AddCar() {
           className="mb-8"
         >
           <Link
-            to="/dashboard"
+            to={backTo}
             className="inline-flex items-center gap-2 text-[#888] hover:text-white transition-colors duration-200 text-sm font-medium cursor-pointer"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
               <line x1="19" y1="12" x2="5" y2="12" />
               <polyline points="12 19 5 12 12 5" />
             </svg>
-            Back to Dashboard
+            {isEditing ? 'Back to Car' : 'Back to Dashboard'}
           </Link>
         </motion.div>
 
@@ -114,12 +166,18 @@ export default function AddCar() {
           transition={{ duration: 0.5 }}
           className="mb-10"
         >
-          <h1 className="text-4xl font-black text-white mb-2">Add a Car</h1>
-          <p className="text-[#888]">Add a new vehicle to your garage collection.</p>
+          <h1 className="text-4xl font-black text-white mb-2">
+            {isEditing ? 'Edit Car' : 'Add a Car'}
+          </h1>
+          <p className="text-[#888]">
+            {isEditing
+              ? `Editing ${editCar.make} ${editCar.model}.`
+              : 'Add a new vehicle to your garage collection.'}
+          </p>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Photo upload */}
+          {/* Photo upload (UI only — image storage not yet enabled) */}
           <motion.div
             custom={0}
             variants={fieldVariant}
@@ -135,7 +193,6 @@ export default function AddCar() {
               onDrop={(e) => { e.preventDefault(); setDragOver(false) }}
               animate={{ borderColor: dragOver ? '#E63946' : '#2A2A2A' }}
               className="border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-colors duration-200 bg-[#1A1A1A] hover:border-[#E63946]/50"
-              onClick={() => {}}
             >
               <div className="text-[#555] mb-3 flex justify-center">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10">
@@ -176,9 +233,30 @@ export default function AddCar() {
             ))}
           </div>
 
-          {/* Notes */}
+          {/* Status */}
           <motion.div
             custom={fields.length + 1}
+            variants={fieldVariant}
+            initial="hidden"
+            animate="visible"
+          >
+            <label htmlFor="status" className="block text-sm font-semibold text-[#ccc] mb-2">
+              Status
+            </label>
+            <select
+              id="status"
+              value={form.status}
+              onChange={handleChange}
+              className="w-full bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl px-4 py-3 text-sm font-medium focus:outline-none focus:border-[#E63946] focus:ring-1 focus:ring-[#E63946]/30 transition-colors duration-200 appearance-none cursor-pointer"
+            >
+              <option value="Active">Active</option>
+              <option value="In Service">In Service</option>
+            </select>
+          </motion.div>
+
+          {/* Notes */}
+          <motion.div
+            custom={fields.length + 2}
             variants={fieldVariant}
             initial="hidden"
             animate="visible"
@@ -196,9 +274,20 @@ export default function AddCar() {
             />
           </motion.div>
 
+          {/* Error */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-[#E63946]/10 border border-[#E63946]/30 text-[#E63946] text-sm font-medium px-4 py-3 rounded-xl"
+            >
+              {error}
+            </motion.div>
+          )}
+
           {/* Submit */}
           <motion.div
-            custom={fields.length + 2}
+            custom={fields.length + 3}
             variants={fieldVariant}
             initial="hidden"
             animate="visible"
@@ -217,10 +306,10 @@ export default function AddCar() {
                     transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
                     className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                   />
-                  Adding to garage…
+                  {isEditing ? 'Saving…' : 'Adding to garage…'}
                 </>
               ) : (
-                'Add to Garage'
+                isEditing ? 'Save Changes' : 'Add to Garage'
               )}
             </motion.button>
           </motion.div>

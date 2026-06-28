@@ -1,69 +1,14 @@
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 
 const pageTransition = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.4 } },
   exit: { opacity: 0, transition: { duration: 0.25 } },
 }
-
-const cars = [
-  {
-    id: 1,
-    make: 'BMW',
-    model: 'M3 Competition',
-    year: 2024,
-    hp: 510,
-    color: 'Isle of Man Blue',
-    colorHex: '#1D4ED8',
-    engine: 'S58 3.0L Twin-Turbo I6',
-    status: 'Active',
-    notes: 'Track-ready setup with M Performance parts.',
-    photo: 'https://images.unsplash.com/photo-1719573216387-bd296bf97cb1?q=80&w=740&auto=format&fit=crop',
-  },
-  {
-    id: 2,
-    make: 'Porsche',
-    model: '911 GT3',
-    year: 2023,
-    hp: 502,
-    color: 'Carrara White',
-    colorHex: '#E5E7EB',
-    engine: '4.0L Naturally Aspirated H6',
-    status: 'Active',
-    notes: 'Clubsport package, full roll cage.',
-    photo: 'https://images.unsplash.com/photo-1731514298268-9b4518462ca6?q=80&w=1740&auto=format&fit=crop',
-  },
-  {
-    id: 3,
-    make: 'Toyota',
-    model: 'Supra MK4',
-    year: 1998,
-    hp: 320,
-    color: 'Super Orange',
-    colorHex: '#EA580C',
-    engine: '2JZ-GTE 3.0L Twin-Turbo I6',
-    status: 'In Service',
-    notes: 'Full engine rebuild in progress.',
-    photo: 'https://images.unsplash.com/photo-1688576788457-76df1c87d021?q=80&w=654&auto=format&fit=crop',
-  },
-  {
-    id: 4,
-    make: 'Mercedes',
-    model: 'AMG GT63',
-    year: 2022,
-    hp: 630,
-    color: 'Obsidian Black',
-    colorHex: '#374151',
-    engine: 'M177 4.0L Bi-Turbo V8',
-    status: 'Active',
-    notes: 'Daily driver with AMG Dynamic Plus package.',
-    photo: 'https://images.unsplash.com/photo-1617814065893-00757125efab?q=80&w=2064&auto=format&fit=crop',
-  },
-]
-
-const totalHp = cars.reduce((sum, c) => sum + c.hp, 0)
 
 function CarCard({ car, index }) {
   return (
@@ -74,17 +19,25 @@ function CarCard({ car, index }) {
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl overflow-hidden cursor-pointer group"
     >
-      {/* Photo */}
-      <div className="relative h-48 overflow-hidden">
-        <motion.img
-          src={car.photo}
-          alt={`${car.make} ${car.model}`}
-          className="w-full h-full object-cover"
-          whileHover={{ scale: 1.05 }}
-          transition={{ duration: 0.4 }}
-        />
+      <div className="relative h-48 overflow-hidden bg-[#222]">
+        {car.image_url ? (
+          <motion.img
+            src={car.image_url}
+            alt={`${car.make} ${car.model}`}
+            className="w-full h-full object-cover"
+            whileHover={{ scale: 1.05 }}
+            transition={{ duration: 0.4 }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" className="w-16 h-16 text-[#333]">
+              <path d="M19 17H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2l2-3h6l2 3h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2z" />
+              <circle cx="7" cy="17" r="2" />
+              <circle cx="17" cy="17" r="2" />
+            </svg>
+          </div>
+        )}
 
-        {/* Status badge */}
         <div className={`absolute top-3 right-3 text-xs font-bold px-2.5 py-1 rounded-full ${
           car.status === 'Active'
             ? 'bg-emerald-500/20 text-emerald-400'
@@ -93,13 +46,11 @@ function CarCard({ car, index }) {
           {car.status}
         </div>
 
-        {/* Year badge */}
         <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-2.5 py-1 rounded-full">
           {car.year}
         </div>
       </div>
 
-      {/* Card content */}
       <div className="p-6">
         <div className="mb-4">
           <p className="text-[#888] text-xs font-medium uppercase tracking-wider mb-1">{car.make}</p>
@@ -107,16 +58,14 @@ function CarCard({ car, index }) {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap mb-6">
-          <span className="bg-[#E63946]/20 text-[#E63946] text-xs font-bold px-2.5 py-1 rounded-full">
-            {car.hp} hp
-          </span>
-          <span className="flex items-center gap-1.5 text-xs text-[#888] font-medium">
-            <span
-              className="w-3 h-3 rounded-full border border-white/20 flex-shrink-0"
-              style={{ backgroundColor: car.colorHex }}
-            />
-            {car.color}
-          </span>
+          {car.horsepower && (
+            <span className="bg-[#E63946]/20 text-[#E63946] text-xs font-bold px-2.5 py-1 rounded-full">
+              {car.horsepower} hp
+            </span>
+          )}
+          {car.color && (
+            <span className="text-xs text-[#888] font-medium">{car.color}</span>
+          )}
         </div>
 
         <Link
@@ -133,6 +82,24 @@ function CarCard({ car, index }) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const [cars, setCars] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!user) return
+    async function fetchCars() {
+      const { data, error } = await supabase
+        .from('cars')
+        .select('*')
+        .order('created_at', { ascending: false })
+      if (!error) setCars(data ?? [])
+      setLoading(false)
+    }
+    fetchCars()
+  }, [user])
+
+  const totalHp = cars.reduce((sum, c) => sum + (c.horsepower || 0), 0)
+  const activeCars = cars.filter((c) => c.status === 'Active').length
 
   async function handleLogout() {
     navigate('/')
@@ -200,7 +167,7 @@ export default function Dashboard() {
           {[
             {
               label: 'Total Cars',
-              value: cars.length,
+              value: loading ? '—' : cars.length,
               unit: 'vehicles',
               icon: (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
@@ -212,7 +179,7 @@ export default function Dashboard() {
             },
             {
               label: 'Total Horsepower',
-              value: totalHp.toLocaleString(),
+              value: loading ? '—' : totalHp.toLocaleString(),
               unit: 'hp combined',
               icon: (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
@@ -221,15 +188,13 @@ export default function Dashboard() {
               ),
             },
             {
-              label: 'Next Service Due',
-              value: 'Oct 15',
-              unit: 'Supra MK4 — oil change',
+              label: 'Active Cars',
+              value: loading ? '—' : activeCars,
+              unit: 'in active status',
               icon: (
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5">
-                  <rect x="3" y="4" width="18" height="18" rx="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
                 </svg>
               ),
             },
@@ -273,12 +238,55 @@ export default function Dashboard() {
           </Link>
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-24">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
+              className="w-8 h-8 border-2 border-[#333] border-t-[#E63946] rounded-full"
+            />
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && cars.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-center py-24 text-center"
+          >
+            <div className="w-20 h-20 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center mb-6">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-9 h-9 text-[#444]">
+                <path d="M19 17H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2l2-3h6l2 3h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2z" />
+                <circle cx="7" cy="17" r="2" />
+                <circle cx="17" cy="17" r="2" />
+              </svg>
+            </div>
+            <h3 className="text-white font-bold text-xl mb-2">Your garage is empty</h3>
+            <p className="text-[#555] text-sm mb-8 max-w-xs">Add your first car to start building your collection.</p>
+            <Link
+              to="/add-car"
+              className="flex items-center gap-2 bg-[#E63946] text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-[#c8303c] transition-colors duration-200"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add your first car
+            </Link>
+          </motion.div>
+        )}
+
         {/* Car grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {cars.map((car, i) => (
-            <CarCard key={car.id} car={car} index={i} />
-          ))}
-        </div>
+        {!loading && cars.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {cars.map((car, i) => (
+              <CarCard key={car.id} car={car} index={i} />
+            ))}
+          </div>
+        )}
       </div>
     </motion.div>
   )
