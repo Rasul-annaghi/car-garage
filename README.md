@@ -6,9 +6,9 @@ Built for enthusiasts who take their garage seriously.
 ## Features (in progress)
 - 🎨 Beautiful dashboard with real car photos
 - 📋 Detailed car profiles with specs and notes
-- 🔐 Authentication — your garage, private (coming v0.2)
-- 🗄️ Real database storage (coming v0.3)
-- 📸 Photo uploads (coming v0.4)
+- 🔐 Authentication — your garage, private
+- 🗄️ Real database storage
+- 📸 Photo uploads
 - 📊 Statistics and charts (coming v0.6)
 - 🔧 Maintenance reminders (coming v0.7)
 - 💳 Premium plans (coming v0.9)
@@ -28,6 +28,10 @@ Built for enthusiasts who take their garage seriously.
 
 `v0.3` — Database & CRUD complete
 
+`v0.4` — Image Upload complete
+
+`v0.5` — Search & Filters complete
+
 
 ## Roadmap
 Level 1 ✅ Frontend
@@ -36,9 +40,9 @@ Level 2 ✅ Authentication
 
 Level 3 ✅ Database & CRUD
 
-Level 4 🔒 Image Upload
+Level 4 ✅ Image Upload
 
-Level 5 🔒 Search & Filters
+Level 5 ✅ Search & Filters
 
 Level 6 🔒 Statistics
 
