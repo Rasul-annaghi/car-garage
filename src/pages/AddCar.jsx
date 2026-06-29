@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
@@ -46,9 +46,12 @@ export default function AddCar() {
     notes: editCar?.notes ?? '',
     status: editCar?.status ?? 'Active',
   })
+  const [imageFile, setImageFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(editCar?.image_url ?? null)
   const [dragOver, setDragOver] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState(null)
+  const fileInputRef = useRef(null)
 
   async function handleLogout() {
     await logout()
@@ -59,10 +62,55 @@ export default function AddCar() {
     setForm((f) => ({ ...f, [e.target.id]: e.target.value }))
   }
 
+  function applyFile(file) {
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  function handleFileChange(e) {
+    applyFile(e.target.files?.[0])
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragOver(false)
+    applyFile(e.dataTransfer.files?.[0])
+  }
+
+  function handleRemoveImage() {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
     setSubmitted(true)
+
+    let image_url = editCar?.image_url ?? null
+
+    if (imageFile) {
+      const path = `${user.id}/${imageFile.name}`
+      const { error: uploadErr } = await supabase.storage
+        .from('car-images')
+        .upload(path, imageFile, { upsert: true })
+
+      if (uploadErr) {
+        setError(`Image upload failed: ${uploadErr.message}`)
+        setSubmitted(false)
+        return
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('car-images')
+        .getPublicUrl(path)
+
+      image_url = publicUrl
+    } else if (!imagePreview) {
+      image_url = null
+    }
 
     const payload = {
       make: form.make,
@@ -73,6 +121,7 @@ export default function AddCar() {
       engine: form.engine,
       notes: form.notes,
       status: form.status,
+      image_url,
     }
 
     if (isEditing) {
@@ -177,7 +226,7 @@ export default function AddCar() {
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Photo upload (UI only — image storage not yet enabled) */}
+          {/* Photo upload */}
           <motion.div
             custom={0}
             variants={fieldVariant}
@@ -185,27 +234,63 @@ export default function AddCar() {
             animate="visible"
           >
             <label className="block text-sm font-semibold text-[#ccc] mb-2">
-              Photos
+              Photo
             </label>
-            <motion.div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false) }}
-              animate={{ borderColor: dragOver ? '#E63946' : '#2A2A2A' }}
-              className="border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-colors duration-200 bg-[#1A1A1A] hover:border-[#E63946]/50"
-            >
-              <div className="text-[#555] mb-3 flex justify-center">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+
+            {imagePreview ? (
+              <div className="relative rounded-2xl overflow-hidden bg-[#1A1A1A] border border-[#2A2A2A]">
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-full h-56 object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-white/20 transition-colors duration-200 cursor-pointer"
+                  >
+                    Change Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="bg-[#E63946]/20 backdrop-blur-sm border border-[#E63946]/30 text-[#E63946] text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#E63946]/30 transition-colors duration-200 cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
-              <p className="text-white font-semibold text-sm mb-1">
-                {dragOver ? 'Drop to upload' : 'Drag & drop photos here'}
-              </p>
-              <p className="text-[#555] text-xs">or click to browse · PNG, JPG, WEBP up to 10MB</p>
-            </motion.div>
+            ) : (
+              <motion.div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                animate={{ borderColor: dragOver ? '#E63946' : '#2A2A2A' }}
+                className="border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-colors duration-200 bg-[#1A1A1A] hover:border-[#E63946]/50"
+              >
+                <div className="text-[#555] mb-3 flex justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </div>
+                <p className="text-white font-semibold text-sm mb-1">
+                  {dragOver ? 'Drop to upload' : 'Drag & drop a photo here'}
+                </p>
+                <p className="text-[#555] text-xs">or click to browse · PNG, JPG, WEBP up to 10MB</p>
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Fields grid */}
@@ -306,7 +391,7 @@ export default function AddCar() {
                     transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
                     className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
                   />
-                  {isEditing ? 'Saving…' : 'Adding to garage…'}
+                  {imageFile ? 'Uploading photo…' : isEditing ? 'Saving…' : 'Adding to garage…'}
                 </>
               ) : (
                 isEditing ? 'Save Changes' : 'Add to Garage'
