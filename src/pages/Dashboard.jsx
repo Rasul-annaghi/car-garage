@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 
@@ -10,12 +10,25 @@ const pageTransition = {
   exit: { opacity: 0, transition: { duration: 0.25 } },
 }
 
+const STATUS_OPTIONS = ['All', 'Active', 'In Service']
+
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest added' },
+  { value: 'hp_desc', label: 'Horsepower (high → low)' },
+  { value: 'hp_asc', label: 'Horsepower (low → high)' },
+  { value: 'year_desc', label: 'Year (newest)' },
+  { value: 'year_asc', label: 'Year (oldest)' },
+  { value: 'make_az', label: 'Make (A–Z)' },
+]
+
 function CarCard({ car, index }) {
   return (
     <motion.div
+      layout
       initial={{ opacity: 0, y: 25 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, delay: 0.1 + index * 0.08, ease: [0.25, 0.46, 0.45, 0.94] }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.45, delay: 0.05 + index * 0.06, ease: [0.25, 0.46, 0.45, 0.94] }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl overflow-hidden cursor-pointer group"
     >
@@ -79,11 +92,35 @@ function CarCard({ car, index }) {
   )
 }
 
+function SelectControl({ value, onChange, children }) {
+  return (
+    <div className="relative flex-shrink-0">
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="appearance-none bg-[#1A1A1A] border border-[#2A2A2A] text-white rounded-xl px-4 py-2.5 pr-8 text-sm font-medium focus:outline-none focus:border-[#E63946] focus:ring-1 focus:ring-[#E63946]/30 transition-colors duration-200 cursor-pointer w-full"
+      >
+        {children}
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3 h-3 text-[#555]">
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const [cars, setCars] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('All')
+  const [filterYear, setFilterYear] = useState('All')
+  const [sortBy, setSortBy] = useState('newest')
 
   useEffect(() => {
     if (!user) return
@@ -100,6 +137,62 @@ export default function Dashboard() {
 
   const totalHp = cars.reduce((sum, c) => sum + (c.horsepower || 0), 0)
   const activeCars = cars.filter((c) => c.status === 'Active').length
+
+  const uniqueYears = useMemo(() => {
+    return [...new Set(cars.map(c => c.year).filter(Boolean))].sort((a, b) => b - a)
+  }, [cars])
+
+  const filteredCars = useMemo(() => {
+    let result = [...cars]
+
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      result = result.filter(c =>
+        (c.make ?? '').toLowerCase().includes(q) ||
+        (c.model ?? '').toLowerCase().includes(q) ||
+        (c.color ?? '').toLowerCase().includes(q)
+      )
+    }
+
+    if (filterStatus !== 'All') {
+      result = result.filter(c => c.status === filterStatus)
+    }
+
+    if (filterYear !== 'All') {
+      result = result.filter(c => c.year === parseInt(filterYear))
+    }
+
+    switch (sortBy) {
+      case 'hp_desc':
+        result.sort((a, b) => (b.horsepower ?? 0) - (a.horsepower ?? 0))
+        break
+      case 'hp_asc':
+        result.sort((a, b) => (a.horsepower ?? 0) - (b.horsepower ?? 0))
+        break
+      case 'year_desc':
+        result.sort((a, b) => (b.year ?? 0) - (a.year ?? 0))
+        break
+      case 'year_asc':
+        result.sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
+        break
+      case 'make_az':
+        result.sort((a, b) => (a.make ?? '').localeCompare(b.make ?? ''))
+        break
+      default:
+        break
+    }
+
+    return result
+  }, [cars, search, filterStatus, filterYear, sortBy])
+
+  const hasActiveFilters = search.trim() !== '' || filterStatus !== 'All' || filterYear !== 'All' || sortBy !== 'newest'
+
+  function clearFilters() {
+    setSearch('')
+    setFilterStatus('All')
+    setFilterYear('All')
+    setSortBy('newest')
+  }
 
   async function handleLogout() {
     await logout()
@@ -217,7 +310,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Section header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-5">
           <motion.h2
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -249,7 +342,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty garage state */}
         {!loading && cars.length === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -279,13 +372,139 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* Car grid */}
+        {/* Control bar + grid */}
         {!loading && cars.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {cars.map((car, i) => (
-              <CarCard key={car.id} car={car} index={i} />
-            ))}
-          </div>
+          <>
+            {/* Control bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 }}
+              className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-2xl p-4 mb-4"
+            >
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* Search */}
+                <div className="relative flex-1">
+                  <div className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-[#555]">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search by make, model, or color…"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full bg-[#111111] border border-[#2A2A2A] text-white placeholder-[#444] rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:border-[#E63946] focus:ring-1 focus:ring-[#E63946]/30 transition-colors duration-200"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      className="absolute inset-y-0 right-3 flex items-center text-[#555] hover:text-white transition-colors duration-150 cursor-pointer"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdowns row */}
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  {/* Status */}
+                  <SelectControl value={filterStatus} onChange={setFilterStatus}>
+                    {STATUS_OPTIONS.map(s => (
+                      <option key={s} value={s}>{s === 'All' ? 'All statuses' : s}</option>
+                    ))}
+                  </SelectControl>
+
+                  {/* Year */}
+                  <SelectControl value={filterYear} onChange={setFilterYear}>
+                    <option value="All">All years</option>
+                    {uniqueYears.map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </SelectControl>
+
+                  {/* Sort */}
+                  <SelectControl value={sortBy} onChange={setSortBy}>
+                    {SORT_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </SelectControl>
+
+                  {/* Clear all */}
+                  <AnimatePresence>
+                    {hasActiveFilters && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.15 }}
+                        onClick={clearFilters}
+                        className="flex-shrink-0 flex items-center gap-1.5 text-[#888] hover:text-white border border-[#2A2A2A] hover:border-[#444] bg-transparent rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200 cursor-pointer whitespace-nowrap"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-3.5 h-3.5">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                        Clear all
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Result count */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3, delay: 0.35 }}
+              className="text-[#555] text-xs font-medium mb-5"
+            >
+              {hasActiveFilters
+                ? `Showing ${filteredCars.length} of ${cars.length} cars`
+                : `${cars.length} ${cars.length === 1 ? 'car' : 'cars'}`
+              }
+            </motion.p>
+
+            {/* No results from filters */}
+            {filteredCars.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center justify-center py-20 text-center"
+              >
+                <div className="w-16 h-16 rounded-full bg-[#1A1A1A] border border-[#2A2A2A] flex items-center justify-center mb-5">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-7 h-7 text-[#444]">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </div>
+                <h3 className="text-white font-bold text-lg mb-1.5">No cars match your filters</h3>
+                <p className="text-[#555] text-sm mb-6 max-w-xs">Try adjusting your search or clearing the filters.</p>
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center gap-2 bg-[#1A1A1A] border border-[#2A2A2A] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:border-[#E63946] hover:text-[#E63946] transition-all duration-200 cursor-pointer"
+                >
+                  Clear filters
+                </button>
+              </motion.div>
+            ) : (
+              /* Car grid */
+              <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <AnimatePresence mode="popLayout">
+                  {filteredCars.map((car, i) => (
+                    <CarCard key={car.id} car={car} index={i} />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </>
         )}
       </div>
     </motion.div>

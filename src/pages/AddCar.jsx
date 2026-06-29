@@ -92,10 +92,11 @@ export default function AddCar() {
     let image_url = editCar?.image_url ?? null
 
     if (imageFile) {
-      const path = `${user.id}/${imageFile.name}`
+      const ext = imageFile.name.split('.').pop()
+      const path = `${user.id}/${Date.now()}.${ext}`
       const { error: uploadErr } = await supabase.storage
         .from('car-images')
-        .upload(path, imageFile, { upsert: true })
+        .upload(path, imageFile)
 
       if (uploadErr) {
         setError(`Image upload failed: ${uploadErr.message}`)
