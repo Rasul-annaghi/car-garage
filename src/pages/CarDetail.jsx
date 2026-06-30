@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import ServiceHistory from '../components/ServiceHistory'
 
 const pageTransition = {
   hidden: { opacity: 0 },
@@ -361,6 +362,8 @@ export default function CarDetail() {
             </div>
           </motion.div>
         </div>
+
+        <ServiceHistory car={car} user={user} />
       </div>
     </motion.div>
   )
