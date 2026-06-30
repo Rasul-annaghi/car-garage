@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
+import GarageInsights from '../components/GarageInsights'
 
 const pageTransition = {
   hidden: { opacity: 0 },
@@ -506,6 +507,9 @@ export default function Dashboard() {
             )}
           </>
         )}
+
+        {/* Garage Insights charts */}
+        {!loading && cars.length > 0 && <GarageInsights cars={cars} />}
       </div>
     </motion.div>
   )
